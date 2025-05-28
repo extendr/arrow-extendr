@@ -8,6 +8,9 @@ At present, versions of arrow-rs are not compatible with each other. This means 
 
 **Versions**:
 
+- 55.1.0
+- 54.0.0
+- 53.0.0
 - 52.0.0
 - 51.0.0
 - 50.0.0 (compatible with geoarrow-rs 0.1.0)
