@@ -1,6 +1,6 @@
 [package]
 name = 'arrow_extendr'
-version = '53.0.0'
+version = '54.0.0'
 edition = '2021'
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/josiahparry/arrow-extendr"
@@ -20,5 +20,5 @@ crate-type = ["staticlib", "lib"]
 name = 'arrow_extendr'
 
 [dependencies]
-arrow = { version = "53.0.0", features = ["ffi"] }
-extendr-api = '>=0.6.0'
+arrow = { version = "54.0.0", features = ["ffi"] }
+extendr-api = '>=0.8.0'
