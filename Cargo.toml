@@ -1,6 +1,6 @@
 [package]
 name = "arrow_extendr"
-version = "55.1.0"
+version = "56.0.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/josiahparry/arrow-extendr"
