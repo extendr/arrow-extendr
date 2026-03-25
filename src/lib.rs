@@ -60,5 +60,28 @@
 //! #> Found 143 rows
 //! #> [1] 2959
 //! ```
+use extendr_api::prelude::*;
+use std::result::Result;
+
+/// Creates an Arrow struct from an `Robj`.
+pub trait FromArrowRobj: Sized {
+    fn from_arrow_robj(robj: &Robj) -> Result<Self, anyhow::Error>;
+}
+
+/// Converts an Arrow struct into an `Robj`.
+pub trait ToArrowRobj {
+    fn to_arrow_robj(&self) -> extendr_api::Result<Robj>;
+}
+
+/// Converts an Arrow struct into an `Robj`, consuming self.
+pub trait IntoArrowRobj {
+    fn into_arrow_robj(self) -> extendr_api::Result<Robj>;
+}
+
+#[cfg(feature = "arrow")]
 pub mod from;
+#[cfg(feature = "arrow")]
 pub mod to;
+
+#[cfg(feature = "polars")]
+pub mod polars;

@@ -1,22 +1,45 @@
 [package]
 name = "arrow_extendr"
-version = "57.0.0"
+version = "58.0.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/josiahparry/arrow-extendr"
-authors = ["Josiah Parry<josiah.parry@gmail.com>"]
-description = "Enables the use of arrow-rs in R using extendr and nanoarrow"
-categories = ["development-tools::ffi"]
-keywords = ["arrow", "extendr", "rstats"]
-readme = "README.md"
-include = ["Cargo.toml", "README.md", "src/*"]
 # matches arrow
 rust-version = "1.70.0"
+description = "Enables the use of arrow-rs in R using extendr and nanoarrow"
+readme = "README.md"
+repository = "https://github.com/josiahparry/arrow-extendr"
+license = "MIT OR Apache-2.0"
+keywords = ["arrow", "extendr", "rstats"]
+categories = ["development-tools::ffi"]
+include = ["Cargo.toml", "README.md", "src/*"]
 
 [lib]
 crate-type = ["lib", "staticlib"]
 name = "arrow_extendr"
 
 [dependencies]
-arrow = { version = "57.0.0", features = ["ffi"] }
-extendr-api = ">=0.8.0"
+anyhow = "1"
+arrow = { version = "58.1.0", features = ["ffi"], optional = true }
+extendr-api = ">=0.8.1"
+polars-core = { version = "0.53.0", features = [
+  "dtype-array",
+  "dtype-categorical",
+  "dtype-date",
+  "dtype-datetime",
+  "dtype-decimal",
+  "dtype-duration",
+  "dtype-i8",
+  "dtype-i16",
+  "dtype-i128",
+  "dtype-struct",
+  "dtype-time",
+  "dtype-u8",
+  "dtype-u16",
+  "dtype-u128",
+  "fmt",
+  "temporal",
+], optional = true }
+
+[features]
+default = ["arrow"]
+arrow = ["dep:arrow"]
+polars = ["arrow", "dep:polars-core"]
