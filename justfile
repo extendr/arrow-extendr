@@ -3,3 +3,6 @@ default:
 
 fmt:
     cargo fmt
+
+pub:
+    cargo publish
