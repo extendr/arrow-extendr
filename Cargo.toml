@@ -1,6 +1,6 @@
 [package]
 name = "arrow_extendr"
-version = "58.0.0"
+version = "58.0.1"
 edition = "2021"
 # matches arrow
 rust-version = "1.70.0"
@@ -38,8 +38,27 @@ polars-core = { version = "0.53.0", features = [
   "fmt",
   "temporal",
 ], optional = true }
+polars-core-051 = { package = "polars-core", version = "0.51.0", default-features = false, features = [
+  "dtype-array",
+  "dtype-categorical",
+  "dtype-date",
+  "dtype-datetime",
+  "dtype-decimal",
+  "dtype-duration",
+  "dtype-i8",
+  "dtype-i16",
+  "dtype-i128",
+  "dtype-struct",
+  "dtype-time",
+  "dtype-u8",
+  "dtype-u16",
+  "fmt",
+  "temporal",
+], optional = true }
 
 [features]
 default = ["arrow"]
 arrow = ["dep:arrow"]
-polars = ["arrow", "dep:polars-core"]
+polars = ["polars-53"]
+polars-53 = ["arrow", "dep:polars-core"]
+polars-51 = ["arrow", "dep:polars-core-051"]

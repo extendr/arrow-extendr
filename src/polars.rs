@@ -15,6 +15,9 @@ use crate::{
     FromArrowRobj, IntoArrowRobj,
 };
 use extendr_api::{error::Result, prelude::*};
+#[cfg(feature = "polars-51")]
+extern crate polars_core_051 as polars_core;
+
 use polars_core::utils::arrow::{
     array::{Array, StructArray},
     datatypes::{ArrowDataType, Field},
@@ -74,6 +77,7 @@ impl FromArrowRobj for DataFrame {
             _ => return Err(anyhow::anyhow!("stream schema must be a struct type")),
         };
 
+        #[cfg(feature = "polars-53")]
         let height = chunks.first().map_or(0, |c| c.len());
 
         let columns = fields
@@ -90,7 +94,10 @@ impl FromArrowRobj for DataFrame {
             })
             .collect::<std::result::Result<Vec<_>, _>>()?;
 
-        DataFrame::new(height, columns).map_err(|e| anyhow::anyhow!("{e}"))
+        #[cfg(feature = "polars-53")]
+        return DataFrame::new(height, columns).map_err(|e| anyhow::anyhow!("{e}"));
+        #[cfg(feature = "polars-51")]
+        return DataFrame::new(columns).map_err(|e| anyhow::anyhow!("{e}"));
     }
 }
 
@@ -118,7 +125,10 @@ impl IntoArrowRobj for DataFrame {
         let dtype = ArrowDataType::Struct(fields);
         let schema_field = Field::new("".into(), dtype.clone(), false);
 
+        #[cfg(feature = "polars-53")]
         let columns = self.columns().to_vec();
+        #[cfg(feature = "polars-51")]
+        let columns = self.get_columns().to_vec();
         let n_chunks = columns.first().map_or(0, |s| s.n_chunks());
 
         let iter: Box<dyn Iterator<Item = PolarsResult<Box<dyn Array>>>> =

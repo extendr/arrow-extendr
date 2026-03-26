@@ -1,3 +1,12 @@
+## 58.0.1
+
+### New features
+
+- Add `polars-51` feature flag for interop with `polars-core 0.51`
+- Add `polars-53` as an explicit feature flag (equivalent to the existing `polars` flag)
+- `polars` is now an alias for `polars-53`
+- Enabling `polars-51` together with `polars-53` or `polars` produces a compile error
+
 ## 58.0.0
 
 ### Breaking changes

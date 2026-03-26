@@ -69,11 +69,29 @@ process_stream(query)
 
 ## Polars interop
 
-arrow-extendr provides optional interop with [Polars](https://docs.rs/polars) via the `polars` feature flag. Add to your `Cargo.toml`:
+arrow-extendr provides optional interop with [Polars](https://docs.rs/polars) via versioned feature flags. Use the feature that matches your `polars-core` version:
+
+| Feature | polars-core version |
+| ------- | ------------------- |
+| `polars` | `0.53` (alias for `polars-53`) |
+| `polars-53` | `0.53` |
+| `polars-51` | `0.51` |
+
+These features are mutually exclusive — enabling more than one will produce a compile error.
+
+### polars-core 0.53
 
 ```toml
-arrow_extendr = { version = "58.0.0", features = ["polars"], default-features = false }
+arrow_extendr = { version = "58.0.1", features = ["polars-53"], default-features = false }
 polars-core = "0.53.0"
+anyhow = "1"
+```
+
+### polars-core 0.51
+
+```toml
+arrow_extendr = { version = "58.0.1", features = ["polars-51"], default-features = false }
+polars-core = "0.51.0"
 anyhow = "1"
 ```
 

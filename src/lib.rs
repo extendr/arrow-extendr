@@ -83,5 +83,8 @@ pub mod from;
 #[cfg(feature = "arrow")]
 pub mod to;
 
-#[cfg(feature = "polars")]
+#[cfg(all(feature = "polars-51", any(feature = "polars-53", feature = "polars")))]
+compile_error!("features `polars-51` and `polars-53`/`polars` are mutually exclusive");
+
+#[cfg(any(feature = "polars-53", feature = "polars-51"))]
 pub mod polars;
