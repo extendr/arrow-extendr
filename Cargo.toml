@@ -20,6 +20,8 @@ name = "arrow_extendr"
 anyhow = "1"
 arrow = { version = "58.1.0", features = ["ffi"], optional = true }
 extendr-api = ">=0.8.1"
+extendr-ffi = "0.9.0"
+geoarrow-array = { version = "0.8", optional = true }
 polars-core = { version = "0.53.0", features = [
   "dtype-array",
   "dtype-categorical",
@@ -56,9 +58,15 @@ polars-core-051 = { package = "polars-core", version = "0.51.0", default-feature
   "temporal",
 ], optional = true }
 
+[dev-dependencies]
+extendr-engine = "0.9.0"
+serial_test = "3"
+anyhow = "1"
+
 [features]
 default = ["arrow"]
 arrow = ["dep:arrow"]
+geoarrow-08 = ["dep:geoarrow-array"]
 polars = ["polars-53"]
-polars-53 = ["arrow", "dep:polars-core"]
 polars-51 = ["arrow", "dep:polars-core-051"]
+polars-53 = ["arrow", "dep:polars-core"]
