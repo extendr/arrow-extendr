@@ -67,11 +67,11 @@ impl_from_arrow_robj_geoarrow!(
 /// Shared conversion of a `GeoArrowArray` to a `nanoarrow_array` Robj.
 fn geoarrow_to_nanoarrow(array: &dyn GeoArrowArray) -> extendr_api::Result<Robj> {
     let field = array.data_type().to_field("", true);
-    let ffi_schema = FFI_ArrowSchema::try_from(&field)
-        .map_err(|e| extendr_api::Error::Other(e.to_string()))?;
+    let ffi_schema =
+        FFI_ArrowSchema::try_from(&field).map_err(|e| extendr_api::Error::Other(e.to_string()))?;
     let array_ref = array.to_array_ref();
-    let (ffi_array, _) = ffi::to_ffi(&array_ref.to_data())
-        .map_err(|e| extendr_api::Error::Other(e.to_string()))?;
+    let (ffi_array, _) =
+        ffi::to_ffi(&array_ref.to_data()).map_err(|e| extendr_api::Error::Other(e.to_string()))?;
     let schema_robj = crate::nanoarrow::schema_to_robj(ffi_schema);
     Ok(crate::nanoarrow::array_to_robj(ffi_array, schema_robj))
 }

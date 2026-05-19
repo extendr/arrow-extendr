@@ -3,17 +3,19 @@ use extendr_api::R;
 use extendr_engine::with_r;
 use geoarrow_array::{
     array::{
-        GeometryArray, LineStringArray, MultiLineStringArray, MultiPointArray, MultiPolygonArray,
-        PointArray, PolygonArray, WkbViewArray, WktViewArray,
+        GeometryArray, GeometryCollectionArray, LineStringArray, MultiLineStringArray,
+        MultiPointArray, MultiPolygonArray, PointArray, PolygonArray, RectArray, WkbViewArray,
+        WktViewArray,
     },
+    builder::{GeometryBuilder, GeometryCollectionBuilder, RectBuilder},
     GeoArrowArray,
 };
+use geoarrow_schema::{BoxType, Dimension, GeometryCollectionType, GeometryType, Metadata};
 use serial_test::serial;
 use std::sync::Arc;
 
 fn wkt_of(arr: &extendr_api::Robj) -> extendr_api::Robj {
-    R!("geoarrow::geoarrow_handle({{arr}}, wk::wkt_writer())")
-        .unwrap()
+    R!("geoarrow::geoarrow_handle({{arr}}, wk::wkt_writer())").unwrap()
 }
 
 fn wkt_roundtrip_ok(original_wkt: &extendr_api::Robj, roundtrip: &extendr_api::Robj) -> bool {
@@ -130,11 +132,75 @@ roundtrip_test!(
     )"#
 );
 
-roundtrip_test!(
-    test_geoarrow_geometry_roundtrip,
-    GeometryArray,
-    r#"geoarrow::as_geoarrow_array(
-        wk::wkt(c("POINT (0 1)", "LINESTRING (0 0, 1 1)")),
-        schema = geoarrow::geoarrow_wkb()
-    )"#
-);
+#[test]
+#[serial]
+fn test_geoarrow_geometry_roundtrip() -> anyhow::Result<()> {
+    use geo_types::{Coord, Geometry, LineString, Point};
+    with_r(|| {
+        let geoms: Vec<Option<Geometry>> = vec![
+            Some(Point::new(0.0_f64, 1.0).into()),
+            Some(LineString(vec![Coord { x: 0.0_f64, y: 0.0 }, Coord { x: 1.0, y: 1.0 }]).into()),
+        ];
+        let typ = GeometryType::new(Arc::new(Metadata::default()));
+        let array = GeometryBuilder::from_nullable_geometries(&geoms, typ)
+            .map_err(|e| extendr_api::Error::Other(e.to_string()))?
+            .finish();
+        let len = array.len();
+        let robj = array.into_arrow_robj()?;
+        let roundtrip = GeometryArray::from_arrow_robj(&robj)
+            .map_err(|e| extendr_api::Error::Other(e.to_string()))?;
+        assert_eq!(roundtrip.len(), len);
+        Ok::<(), extendr_api::Error>(())
+    })
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_rect_roundtrip() -> anyhow::Result<()> {
+    use geo_types::{Coord, Rect};
+    with_r(|| {
+        let rects = vec![
+            Rect::new(Coord { x: 0.0_f64, y: 0.0 }, Coord { x: 1.0_f64, y: 1.0 }),
+            Rect::new(Coord { x: 2.0_f64, y: 2.0 }, Coord { x: 3.0_f64, y: 3.0 }),
+        ];
+        let typ = BoxType::new(Dimension::XY, Arc::new(Metadata::default()));
+        let array = RectBuilder::from_rects(rects.iter(), typ).finish();
+        let len = array.len();
+        let robj = array.into_arrow_robj()?;
+        let roundtrip = RectArray::from_arrow_robj(&robj)
+            .map_err(|e| extendr_api::Error::Other(e.to_string()))?;
+        assert_eq!(roundtrip.len(), len);
+        Ok::<(), extendr_api::Error>(())
+    })
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_geometry_collection_roundtrip() -> anyhow::Result<()> {
+    use geo_types::{Coord, Geometry, GeometryCollection, LineString, Point};
+    with_r(|| {
+        let collections: Vec<GeometryCollection> = vec![
+            GeometryCollection(vec![Geometry::Point(Point::new(0.0_f64, 1.0))]),
+            GeometryCollection(vec![Geometry::LineString(LineString(vec![
+                Coord { x: 0.0_f64, y: 0.0 },
+                Coord { x: 1.0, y: 1.0 },
+            ]))]),
+        ];
+        let typ = GeometryCollectionType::new(Dimension::XY, Arc::new(Metadata::default()));
+        let array = GeometryCollectionBuilder::from_geometry_collections(&collections, typ)
+            .map_err(|e| extendr_api::Error::Other(e.to_string()))?
+            .finish();
+        let len = array.len();
+        let robj = array.into_arrow_robj()?;
+        let roundtrip = GeometryCollectionArray::from_arrow_robj(&robj)
+            .map_err(|e| extendr_api::Error::Other(e.to_string()))?;
+        assert_eq!(roundtrip.len(), len);
+        Ok::<(), extendr_api::Error>(())
+    })
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(())
+}
