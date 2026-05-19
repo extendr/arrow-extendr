@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{make_array, Array},
+    array::{Array, make_array},
     datatypes::Field,
     ffi::{self, FFI_ArrowSchema},
 };
 use extendr_api::prelude::*;
 use geoarrow_array::{
-    array::{
-        from_arrow_array, GeometryArray, GeometryCollectionArray, LineStringArray,
-        MultiLineStringArray, MultiPointArray, MultiPolygonArray, PointArray, PolygonArray,
-        RectArray, WkbViewArray, WktViewArray,
-    },
     GeoArrowArray,
+    array::{
+        GeometryArray, GeometryCollectionArray, LineStringArray, MultiLineStringArray,
+        MultiPointArray, MultiPolygonArray, PointArray, PolygonArray, RectArray, WkbViewArray,
+        WktViewArray, from_arrow_array,
+    },
 };
 
 use crate::{FromArrowRobj, IntoArrowRobj, ToArrowRobj};

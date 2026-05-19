@@ -9,11 +9,8 @@
 //! | `DataFrame`                    | `nanoarrow_array_stream`|
 //! | `DataFrame` (from R)           | `nanoarrow_array_stream`|
 
-use crate::{
-    from::nanoarrow_export,
-    to::{allocate_array_stream, move_pointer},
-    FromArrowRobj, IntoArrowRobj,
-};
+use crate::{FromArrowRobj, IntoArrowRobj};
+use arrow::ffi_stream::FFI_ArrowArrayStream;
 use extendr_api::{error::Result, prelude::*};
 #[cfg(feature = "polars-51")]
 extern crate polars_core_051 as polars_core;
@@ -39,13 +36,10 @@ impl FromArrowRobj for ArrowArrayStreamReader<Box<ArrowArrayStream>> {
             return Err(anyhow::anyhow!("expected a `nanoarrow_array_stream`"));
         }
 
-        let mut stream = Box::new(ArrowArrayStream::empty());
-        let stream_ptr = stream.as_mut() as *mut ArrowArrayStream as usize;
-
-        let _ =
-            nanoarrow_export(robj, stream_ptr.to_string()).map_err(|e| anyhow::anyhow!("{e}"))?;
-
-        // SAFETY: the pointer was just populated by nanoarrow_pointer_export
+        let ffi_stream = crate::nanoarrow::c_export_array_stream(robj)?;
+        // SAFETY: FFI_ArrowArrayStream (arrow-rs) and ArrowArrayStream (polars-arrow) are both
+        // #[repr(C)] structs with identical layout per the Arrow C Stream Interface spec.
+        let stream: Box<ArrowArrayStream> = Box::new(unsafe { std::mem::transmute(ffi_stream) });
         unsafe { ArrowArrayStreamReader::try_new(stream).map_err(|e| anyhow::anyhow!("{e}")) }
     }
 }
@@ -104,13 +98,11 @@ impl FromArrowRobj for DataFrame {
 // ── To R ─────────────────────────────────────────────────────────────────────
 
 impl IntoArrowRobj for ArrowArrayStream {
-    fn into_arrow_robj(mut self) -> Result<Robj> {
-        let stream_ptr = (&mut self) as *mut ArrowArrayStream as usize;
-
-        let stream_to_fill = allocate_array_stream(pairlist!())?;
-        let _ = move_pointer(pairlist!(stream_ptr.to_string(), &stream_to_fill));
-
-        Ok(stream_to_fill)
+    fn into_arrow_robj(self) -> Result<Robj> {
+        // SAFETY: ArrowArrayStream (polars-arrow) and FFI_ArrowArrayStream (arrow-rs) are both
+        // #[repr(C)] structs with identical layout per the Arrow C Stream Interface spec.
+        let ffi_stream: FFI_ArrowArrayStream = unsafe { std::mem::transmute(self) };
+        Ok(crate::nanoarrow::array_stream_to_robj(ffi_stream))
     }
 }
 

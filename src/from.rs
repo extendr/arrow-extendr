@@ -25,7 +25,7 @@
 
 use crate::FromArrowRobj;
 use arrow::{
-    array::{make_array, ArrayData},
+    array::{ArrayData, make_array},
     datatypes::{DataType, Field, Schema},
     ffi::{self, FFI_ArrowArray, FFI_ArrowSchema},
     ffi_stream::ArrowArrayStreamReader,

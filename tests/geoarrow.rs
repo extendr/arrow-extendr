@@ -2,13 +2,13 @@ use arrow_extendr::{FromArrowRobj, IntoArrowRobj};
 use extendr_api::R;
 use extendr_engine::with_r;
 use geoarrow_array::{
+    GeoArrowArray,
     array::{
         GeometryArray, GeometryCollectionArray, LineStringArray, MultiLineStringArray,
         MultiPointArray, MultiPolygonArray, PointArray, PolygonArray, RectArray, WkbViewArray,
         WktViewArray,
     },
     builder::{GeometryBuilder, GeometryCollectionBuilder, RectBuilder},
-    GeoArrowArray,
 };
 use geoarrow_schema::{BoxType, Dimension, GeometryCollectionType, GeometryType, Metadata};
 use serial_test::serial;
@@ -161,7 +161,7 @@ fn test_geoarrow_geometry_roundtrip() -> anyhow::Result<()> {
 fn test_geoarrow_rect_roundtrip() -> anyhow::Result<()> {
     use geo_types::{Coord, Rect};
     with_r(|| {
-        let rects = vec![
+        let rects = [
             Rect::new(Coord { x: 0.0_f64, y: 0.0 }, Coord { x: 1.0_f64, y: 1.0 }),
             Rect::new(Coord { x: 2.0_f64, y: 2.0 }, Coord { x: 3.0_f64, y: 3.0 }),
         ];

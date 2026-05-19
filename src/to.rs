@@ -27,7 +27,7 @@ use arrow::{
     array::{Array, ArrayData, PrimitiveArray},
     datatypes::{ArrowPrimitiveType, DataType, Field, Schema, SchemaBuilder},
     error::ArrowError,
-    ffi::{to_ffi, FFI_ArrowSchema},
+    ffi::{FFI_ArrowSchema, to_ffi},
     ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream},
     record_batch::{RecordBatch, RecordBatchIterator, RecordBatchReader},
 };

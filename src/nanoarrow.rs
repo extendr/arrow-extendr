@@ -38,9 +38,9 @@ pub(crate) fn c_export_schema(schema_xptr: &Robj) -> anyhow::Result<&FFI_ArrowSc
 }
 
 unsafe extern "C" fn finalizer_schema(sexp: extendr_ffi::SEXP) {
-    let ptr = R_ExternalPtrAddr(sexp) as *mut FFI_ArrowSchema;
+    let ptr = unsafe { R_ExternalPtrAddr(sexp) } as *mut FFI_ArrowSchema;
     if !ptr.is_null() {
-        drop(Box::from_raw(ptr));
+        unsafe { drop(Box::from_raw(ptr)) };
     }
 }
 
@@ -59,9 +59,9 @@ pub(crate) fn schema_to_robj(schema: FFI_ArrowSchema) -> Robj {
 }
 
 unsafe extern "C" fn finalizer_array(sexp: extendr_ffi::SEXP) {
-    let ptr = R_ExternalPtrAddr(sexp) as *mut FFI_ArrowArray;
+    let ptr = unsafe { R_ExternalPtrAddr(sexp) } as *mut FFI_ArrowArray;
     if !ptr.is_null() {
-        drop(Box::from_raw(ptr));
+        unsafe { drop(Box::from_raw(ptr)) };
     }
 }
 
@@ -83,9 +83,9 @@ pub(crate) fn array_to_robj(array: FFI_ArrowArray, schema: Robj) -> Robj {
 }
 
 unsafe extern "C" fn finalizer_array_stream(sexp: extendr_ffi::SEXP) {
-    let ptr = R_ExternalPtrAddr(sexp) as *mut FFI_ArrowArrayStream;
+    let ptr = unsafe { R_ExternalPtrAddr(sexp) } as *mut FFI_ArrowArrayStream;
     if !ptr.is_null() {
-        drop(Box::from_raw(ptr));
+        unsafe { drop(Box::from_raw(ptr)) };
     }
 }
 
