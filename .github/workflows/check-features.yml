@@ -52,5 +52,7 @@ jobs:
           extra-packages: |
             any::wk
             any::geoarrow
+      - name: Set LD_LIBRARY_PATH
+        run: echo "LD_LIBRARY_PATH=$(R RHOME)/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: cargo test
         run: cargo test --features geoarrow-08
