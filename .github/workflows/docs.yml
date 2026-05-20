@@ -51,7 +51,7 @@ jobs:
         run: rm -f ./target/doc/.lock
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v5
         with:
           path: "./target/doc"
 
