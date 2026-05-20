@@ -1,4 +1,4 @@
-# 
+#
 name: Deploy static content to Pages
 
 on:
@@ -41,7 +41,7 @@ jobs:
           RUSTDOCFLAGS: "--enable-index-page -Zunstable-options"
 
       - name: Setup Pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v8
 
       # As of v1.0.9, upload-pages-artifact action rejects files with incorrect permissions.
       # In Rust doc's case, .lock is such a file.
@@ -53,8 +53,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: './target/doc'
+          path: "./target/doc"
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v5
