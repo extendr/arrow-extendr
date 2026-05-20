@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@nightly
         if: matrix.config.rust == 'nightly'
@@ -41,7 +41,7 @@ jobs:
           RUSTDOCFLAGS: "--enable-index-page -Zunstable-options"
 
       - name: Setup Pages
-        uses: actions/configure-pages@v8
+        uses: actions/configure-pages@v6
 
       # As of v1.0.9, upload-pages-artifact action rejects files with incorrect permissions.
       # In Rust doc's case, .lock is such a file.

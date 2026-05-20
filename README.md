@@ -1,12 +1,24 @@
-# arrow_extendr
+# arrow-extendr
 
-arrow-extendr is a crate that facilitates the transfer of [Apache Arrow](https://arrow.apache.org/) memory between R and Rust. It utilizes [extendr](https://extendr.github.io/), the [**`{nanoarrow}`**](https://arrow.apache.org/nanoarrow/0.3.0/r/index.html) R package, and [arrow-rs](https://docs.rs/arrow).
+arrow-extendr is a crate that facilitates the transfer of [Apache Arrow](https://arrow.apache.org/) memory between R and Rust. It utilizes [extendr](https://extendr.github.io/) and [arrow-rs](https://docs.rs/arrow).
 
-### Motivating Example
+Arrow memory is exchanged via the [Arrow C Data Interface](https://arrow.apache.org/docs/format/CDataInterface.html) using R's `nanoarrow_array`, `nanoarrow_schema`, and `nanoarrow_array_stream` external pointer objects. The [`{nanoarrow}`](https://arrow.apache.org/nanoarrow/0.3.0/r/index.html) R package is **not** required as a dependency of your package.
+
+## Features
+
+| Feature | Description |
+| ------- | ----------- |
+| `arrow` | Core arrow-rs interop (default) |
+| `geoarrow-08` | GeoArrow array support via geoarrow-array 0.8 |
+| `polars` | Polars interop, alias for `polars-53` |
+| `polars-53` | Polars interop for polars-core 0.53 |
+| `polars-51` | Polars interop for polars-core 0.51 |
+
+## Motivating Example
 
 Say we have the following `DBI` connection which we will send requests to using arrow.
 The result of `dbGetQueryArrow()` is a `nanoarrow_array_stream`. We want to
-count the number of rows in each batch of the steam using Rust.
+count the number of rows in each batch of the stream using Rust.
 
 ```r
 # adapted from https://github.com/r-dbi/DBI/blob/main/vignettes/DBI-arrow.Rmd
@@ -65,6 +77,56 @@ process_stream(query)
 #> Found 256 rows
 #> Found 143 rows
 #> [1] 2959
+```
+
+## GeoArrow interop
+
+arrow-extendr supports [GeoArrow](https://geoarrow.org/) via the `geoarrow-08` feature flag, backed by the [geoarrow-array](https://docs.rs/geoarrow-array) crate.
+
+```toml
+arrow_extendr = { version = "58.0.1", features = ["geoarrow-08"] }
+geoarrow-array = "0.8"
+```
+
+This enables the following conversions between Rust and R's `nanoarrow_array` objects:
+
+| Type | `FromArrowRobj` | `ToArrowRobj` | `IntoArrowRobj` |
+| ---- | :-------------: | :-----------: | :-------------: |
+| `Arc<dyn GeoArrowArray>` | ✓ | ✓ | ✓ |
+| `PointArray` | ✓ | ✓ | ✓ |
+| `LineStringArray` | ✓ | ✓ | ✓ |
+| `PolygonArray` | ✓ | ✓ | ✓ |
+| `MultiPointArray` | ✓ | ✓ | ✓ |
+| `MultiLineStringArray` | ✓ | ✓ | ✓ |
+| `MultiPolygonArray` | ✓ | ✓ | ✓ |
+| `GeometryArray` | ✓ | ✓ | ✓ |
+| `GeometryCollectionArray` | ✓ | ✓ | ✓ |
+| `RectArray` | ✓ | ✓ | ✓ |
+| `WkbViewArray` | ✓ | ✓ | ✓ |
+| `WktViewArray` | ✓ | ✓ | ✓ |
+
+### Example: round-trip a GeoArrow array through R
+
+```rust
+use extendr_api::prelude::*;
+use arrow_extendr::{FromArrowRobj, IntoArrowRobj};
+use geoarrow_array::array::PointArray;
+
+#[extendr]
+/// @export
+fn geoarrow_round_trip(x: Robj) -> extendr_api::Result<Robj> {
+    let array = PointArray::from_arrow_robj(&x)
+        .map_err(|e| extendr_api::Error::Other(e.to_string()))?;
+    array.into_arrow_robj()
+}
+```
+
+```r
+library(geoarrow)
+library(wk)
+
+pts <- as_geoarrow_array(xy(c(1, 2, 3), c(4, 5, 6)))
+geoarrow_round_trip(pts)
 ```
 
 ## Polars interop
@@ -135,10 +197,10 @@ To use arrow-extendr in an R package first create an R package and make it an ex
 
 ```r
 usethis::create_package("my_package")
-rextendr::use_extendr();
+rextendr::use_extendr()
 ```
 
-Next, you have to ensure that `nanoarrow` is a dependency of the package since arrow-extendr will call functions from nanoarrow to convert between R and Arrow memory. To do this run `usethis::use_package("nanoarrow")` to add it to your Imports field in the DESCRIPTION file.
+arrow-extendr implements all Arrow C Data Interface pointer handling in pure Rust, so the `{nanoarrow}` R package is **not** required as a runtime dependency of your package. The pointer objects (`nanoarrow_array`, `nanoarrow_schema`, `nanoarrow_array_stream`) are standard R external pointers whose class names are set by arrow-extendr directly.
 
 ## Versioning
 

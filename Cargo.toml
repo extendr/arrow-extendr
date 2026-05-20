@@ -1,6 +1,6 @@
 [package]
 name = "arrow_extendr"
-version = "58.0.1"
+version = "58.0.2"
 edition = "2024"
 # matches arrow
 rust-version = "1.85.0"
@@ -11,6 +11,9 @@ license = "MIT OR Apache-2.0"
 keywords = ["arrow", "extendr", "rstats"]
 categories = ["development-tools::ffi"]
 include = ["Cargo.toml", "README.md", "src/*"]
+
+[package.metadata.docs.rs]
+features = ["geoarrow-08", "polars-53"]
 
 [lib]
 crate-type = ["lib", "staticlib"]

@@ -1,3 +1,52 @@
+//! Convert [geoarrow-array](https://docs.rs/geoarrow-array) structs to and from an `Robj`
+//! via the Arrow C Data Interface.
+//!
+//! Gated behind the `geoarrow-08` feature flag.
+//!
+//! All types are exchanged as `nanoarrow_array` R external pointer objects, compatible
+//! with the [{geoarrow}](https://geoarrow.github.io/geoarrow-r/) R package.
+//!
+//! ## Conversions
+//!
+//! | Type | `FromArrowRobj` | `ToArrowRobj` | `IntoArrowRobj` |
+//! | ---- | :-------------: | :-----------: | :-------------: |
+//! | `Arc<dyn GeoArrowArray>` | ✓ | ✓ | ✓ |
+//! | `PointArray` | ✓ | ✓ | ✓ |
+//! | `LineStringArray` | ✓ | ✓ | ✓ |
+//! | `PolygonArray` | ✓ | ✓ | ✓ |
+//! | `MultiPointArray` | ✓ | ✓ | ✓ |
+//! | `MultiLineStringArray` | ✓ | ✓ | ✓ |
+//! | `MultiPolygonArray` | ✓ | ✓ | ✓ |
+//! | `GeometryArray` | ✓ | ✓ | ✓ |
+//! | `GeometryCollectionArray` | ✓ | ✓ | ✓ |
+//! | `RectArray` | ✓ | ✓ | ✓ |
+//! | `WkbViewArray` | ✓ | ✓ | ✓ |
+//! | `WktViewArray` | ✓ | ✓ | ✓ |
+//!
+//! ## Example
+//!
+//! ```ignore
+//! use extendr_api::prelude::*;
+//! use arrow_extendr::{FromArrowRobj, IntoArrowRobj};
+//! use geoarrow_array::array::PointArray;
+//!
+//! #[extendr]
+//! /// @export
+//! fn geoarrow_round_trip(x: Robj) -> extendr_api::Result<Robj> {
+//!     let array = PointArray::from_arrow_robj(&x)
+//!         .map_err(|e| extendr_api::Error::Other(e.to_string()))?;
+//!     array.into_arrow_robj()
+//! }
+//! ```
+//!
+//! ```r
+//! library(geoarrow)
+//! library(wk)
+//!
+//! pts <- as_geoarrow_array(xy(c(1, 2, 3), c(4, 5, 6)))
+//! geoarrow_round_trip(pts)
+//! ```
+
 use std::sync::Arc;
 
 use arrow::{
