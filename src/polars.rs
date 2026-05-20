@@ -39,7 +39,9 @@ impl FromArrowRobj for ArrowArrayStreamReader<Box<ArrowArrayStream>> {
         let ffi_stream = crate::nanoarrow::c_export_array_stream(robj)?;
         // SAFETY: FFI_ArrowArrayStream (arrow-rs) and ArrowArrayStream (polars-arrow) are both
         // #[repr(C)] structs with identical layout per the Arrow C Stream Interface spec.
-        let stream: Box<ArrowArrayStream> = Box::new(unsafe { std::mem::transmute(ffi_stream) });
+        let stream: Box<ArrowArrayStream> = Box::new(unsafe {
+            std::mem::transmute::<FFI_ArrowArrayStream, ArrowArrayStream>(ffi_stream)
+        });
         unsafe { ArrowArrayStreamReader::try_new(stream).map_err(|e| anyhow::anyhow!("{e}")) }
     }
 }
@@ -101,7 +103,8 @@ impl IntoArrowRobj for ArrowArrayStream {
     fn into_arrow_robj(self) -> Result<Robj> {
         // SAFETY: ArrowArrayStream (polars-arrow) and FFI_ArrowArrayStream (arrow-rs) are both
         // #[repr(C)] structs with identical layout per the Arrow C Stream Interface spec.
-        let ffi_stream: FFI_ArrowArrayStream = unsafe { std::mem::transmute(self) };
+        let ffi_stream: FFI_ArrowArrayStream =
+            unsafe { std::mem::transmute::<ArrowArrayStream, FFI_ArrowArrayStream>(self) };
         Ok(crate::nanoarrow::array_stream_to_robj(ffi_stream))
     }
 }
