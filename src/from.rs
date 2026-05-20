@@ -24,47 +24,20 @@
 //!
 
 use crate::FromArrowRobj;
-use anyhow::Result;
 use arrow::{
-    array::{make_array, ArrayData},
+    array::{ArrayData, make_array},
     datatypes::{DataType, Field, Schema},
     ffi::{self, FFI_ArrowArray, FFI_ArrowSchema},
-    ffi_stream::{self, ArrowArrayStreamReader, FFI_ArrowArrayStream},
+    ffi_stream::ArrowArrayStreamReader,
     record_batch::RecordBatch,
 };
 use extendr_api::prelude::*;
 
-/// Calls `nanoarrow::nanoarrow_pointer_addr_chr()`
-///
-/// Gets the address of a nanoarrow object as a string `Robj`
-/// Requires `{nanoarrow}` to be installed.
-pub fn nanoarrow_addr(robj: &Robj) -> Result<Robj, Error> {
-    R!("nanoarrow::nanoarrow_pointer_addr_chr")
-        .expect("`nanoarrow` must be installed")
-        .as_function()
-        .expect("`nanoarrow_pointer_addr_ch()` must be available")
-        .call(pairlist!(robj))
-}
-
-/// Calls `nanoarrow::nanoarrow_pointer_export()`
-///
-/// Exports a nanoarrow pointer from R to C
-/// Requires `{nanoarrow}` to be installed.
-pub fn nanoarrow_export(source: &Robj, dest: String) -> Result<Robj, Error> {
-    R!("nanoarrow::nanoarrow_pointer_export")
-        .expect("`nanoarrow` must be installed")
-        .as_function()
-        .expect("`nanoarrow_pointer_export()` must be available")
-        .call(pairlist!(source, dest))
-}
-
 impl FromArrowRobj for Field {
-    fn from_arrow_robj(robj: &Robj) -> std::result::Result<Self, anyhow::Error> {
+    fn from_arrow_robj(robj: &Robj) -> anyhow::Result<Self> {
         if robj.inherits("nanoarrow_schema") {
-            let c_schema = FFI_ArrowSchema::empty();
-            let c_schema_ptr = &c_schema as *const FFI_ArrowSchema as usize;
-            let _ = nanoarrow_export(robj, c_schema_ptr.to_string());
-            return Ok(Field::try_from(&c_schema)?);
+            let schema = crate::nanoarrow::c_export_schema(robj)?;
+            return Ok(Field::try_from(schema)?);
         }
 
         if !robj.inherits("Field") {
@@ -89,10 +62,8 @@ impl FromArrowRobj for Field {
 impl FromArrowRobj for DataType {
     fn from_arrow_robj(robj: &Robj) -> std::result::Result<Self, anyhow::Error> {
         if robj.inherits("nanoarrow_schema") {
-            let c_schema = FFI_ArrowSchema::empty();
-            let c_schema_ptr = &c_schema as *const FFI_ArrowSchema as usize;
-            let _ = nanoarrow_export(robj, c_schema_ptr.to_string());
-            return Ok(DataType::try_from(&c_schema)?);
+            let schema = crate::nanoarrow::c_export_schema(robj)?;
+            return Ok(DataType::try_from(schema)?);
         }
 
         if !robj.inherits("DataType") {
@@ -117,10 +88,8 @@ impl FromArrowRobj for DataType {
 impl FromArrowRobj for Schema {
     fn from_arrow_robj(robj: &Robj) -> std::result::Result<Self, anyhow::Error> {
         if robj.inherits("nanoarrow_schema") {
-            let c_schema = FFI_ArrowSchema::empty();
-            let c_schema_ptr = &c_schema as *const FFI_ArrowSchema as usize;
-            let _ = nanoarrow_export(robj, c_schema_ptr.to_string());
-            return Ok(Schema::try_from(&c_schema)?);
+            let schema = crate::nanoarrow::c_export_schema(robj)?;
+            return Ok(Schema::try_from(schema)?);
         }
 
         if !robj.inherits("Schema") {
@@ -146,23 +115,10 @@ impl FromArrowRobj for Schema {
 impl FromArrowRobj for ArrayData {
     fn from_arrow_robj(robj: &Robj) -> std::result::Result<Self, anyhow::Error> {
         if robj.inherits("nanoarrow_array") {
-            let array = FFI_ArrowArray::empty();
-            let schema = FFI_ArrowSchema::empty();
-
-            let c_array_ptr = &array as *const FFI_ArrowArray as usize;
-            let c_schema_ptr = &schema as *const FFI_ArrowSchema as usize;
-
-            let robj_schema = R!("nanoarrow::infer_nanoarrow_schema")
-                .unwrap()
-                .as_function()
-                .unwrap()
-                .call(pairlist!(robj))
-                .expect("unable to infer nanoarrow schema");
-
-            let _ = nanoarrow_export(robj, c_array_ptr.to_string());
-            let _ = nanoarrow_export(&robj_schema, c_schema_ptr.to_string());
-
-            return Ok(unsafe { ffi::from_ffi(array, &schema)? });
+            let robj_schema = crate::nanoarrow::infer_schema_array(robj.clone())?;
+            let schema = crate::nanoarrow::c_export_schema(&robj_schema)?;
+            let array = crate::nanoarrow::c_export_array(robj)?;
+            return Ok(unsafe { ffi::from_ffi(array, schema)? });
         }
 
         if !robj.inherits("Array") {
@@ -192,9 +148,7 @@ impl FromArrowRobj for ArrayData {
 impl FromArrowRobj for RecordBatch {
     fn from_arrow_robj(robj: &Robj) -> std::result::Result<Self, anyhow::Error> {
         if robj.inherits("nanoarrow_array_stream") {
-            let stream = ffi_stream::FFI_ArrowArrayStream::empty();
-            let c_stream_ptr = &stream as *const FFI_ArrowArrayStream as usize;
-            let _ = nanoarrow_export(robj, c_stream_ptr.to_string());
+            let stream = crate::nanoarrow::c_export_array_stream(robj)?;
             let res = ArrowArrayStreamReader::try_new(stream)?;
             let r2 = res.into_iter().map(|xi| xi.unwrap()).nth(0).unwrap();
             return Ok(r2);
@@ -238,9 +192,7 @@ impl FromArrowRobj for ArrowArrayStreamReader {
         if !robj.inherits("nanoarrow_array_stream") {
             return Err(anyhow::anyhow!("did not find `nanoarrow_array_stream`"));
         }
-        let stream = ffi_stream::FFI_ArrowArrayStream::empty();
-        let c_stream_ptr = &stream as *const FFI_ArrowArrayStream as usize;
-        let _ = nanoarrow_export(robj, c_stream_ptr.to_string());
+        let stream = crate::nanoarrow::c_export_array_stream(robj)?;
         Ok(ArrowArrayStreamReader::try_new(stream)?)
     }
 }

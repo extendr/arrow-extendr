@@ -7,10 +7,12 @@
     "rust-analyzer": {
       "initialization_options": {
         "cargo": {
-          "features": "all",
+          // "features": "all",
+          "features": ["geoarrow-08"],
         },
         "check": {
           "command": "clippy",
+          "features": ["geoarrow-08", "arrow"],
         },
       },
     },

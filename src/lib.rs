@@ -79,6 +79,9 @@ pub trait IntoArrowRobj {
 }
 
 #[cfg(feature = "arrow")]
+pub mod nanoarrow;
+
+#[cfg(feature = "arrow")]
 pub mod from;
 #[cfg(feature = "arrow")]
 pub mod to;
@@ -88,3 +91,6 @@ compile_error!("features `polars-51` and `polars-53`/`polars` are mutually exclu
 
 #[cfg(any(feature = "polars-53", feature = "polars-51"))]
 pub mod polars;
+
+#[cfg(feature = "geoarrow-08")]
+pub mod geoarrow;
