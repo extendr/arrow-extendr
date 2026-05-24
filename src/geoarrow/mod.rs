@@ -49,6 +49,7 @@
 
 use std::sync::Arc;
 
+use anyhow::{anyhow, bail};
 use arrow::{
     array::{Array, make_array},
     datatypes::Field,
@@ -168,3 +169,112 @@ impl_to_arrow_robj_geoarrow!(
     WkbViewArray,
     WktViewArray,
 );
+
+/// {geoarrow} R package has a `geoarrow-vctr` which is an integer vectors
+/// with a list of `chunks` where each is its own geoarrow array
+/// the `schema` is stored in the attribute `schema`
+/// classes are: "geoarrow_vctr"  "nanoarrow_vctr"
+pub struct GeoArrowVctr(Integers);
+
+impl TryFrom<&Robj> for GeoArrowVctr {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Robj) -> Result<Self, Self::Error> {
+        if !value.inherits("geoarrow_vctr") {
+            bail!("Expected object of class `geoarrow_vctr`");
+        }
+        let Some(chunks) = value.get_attrib("chunks") else {
+            bail!("`chunks` attribute missing from `geoarrow_vctr`");
+        };
+
+        let Some(_) = value.get_attrib("schema") else {
+            bail!("`schema` attribute missing from `geoarrow_vctr`")
+        };
+
+        let Ok(_) = List::try_from(chunks) else {
+            bail!("Expected `chunks` attribute to be a list");
+        };
+
+        let inner = Integers::try_from(value).map_err(|e| anyhow!("{e}"))?;
+        Ok(Self(inner))
+    }
+}
+
+impl GeoArrowVctr {
+    fn chunks(&self) -> anyhow::Result<List> {
+        let chunks = self
+            .0
+            .get_attrib("chunks")
+            .ok_or_else(|| anyhow!("`chunks` attribute missing"))?;
+        List::try_from(chunks).map_err(|e| anyhow!("{e}"))
+    }
+
+    fn schema(&self) -> anyhow::Result<Robj> {
+        self.0
+            .get_attrib("schema")
+            .ok_or_else(|| anyhow!("`schema` attribute missing"))
+    }
+
+    fn iter_arrow(&self) -> anyhow::Result<Vec<(Arc<dyn Array>, Field)>> {
+        let schema = self.schema()?;
+        let ffi_schema = crate::nanoarrow::c_export_schema(&schema)?;
+        let field = Field::try_from(ffi_schema)?;
+        self.chunks()?
+            .iter()
+            .map(|(_, chunk)| {
+                let ffi_array = crate::nanoarrow::c_export_array(&chunk)?;
+                let array_data = unsafe { ffi::from_ffi(ffi_array, ffi_schema)? };
+                Ok((make_array(array_data), field.clone()))
+            })
+            .collect()
+    }
+
+    pub fn as_point_chunks(&self) -> anyhow::Result<Vec<PointArray>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(PointArray::try_from((array.as_ref(), &field))?))
+            .collect()
+    }
+
+    pub fn as_multipoint_chunks(&self) -> anyhow::Result<Vec<MultiPointArray>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(MultiPointArray::try_from((array.as_ref(), &field))?))
+            .collect()
+    }
+
+    pub fn as_polygon_chunks(&self) -> anyhow::Result<Vec<PolygonArray>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(PolygonArray::try_from((array.as_ref(), &field))?))
+            .collect()
+    }
+
+    pub fn as_multipolygon_chunks(&self) -> anyhow::Result<Vec<MultiPolygonArray>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(MultiPolygonArray::try_from((array.as_ref(), &field))?))
+            .collect()
+    }
+
+    pub fn as_linestring_chunks(&self) -> anyhow::Result<Vec<LineStringArray>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(LineStringArray::try_from((array.as_ref(), &field))?))
+            .collect()
+    }
+
+    pub fn as_multilinestring_chunks(&self) -> anyhow::Result<Vec<MultiLineStringArray>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(MultiLineStringArray::try_from((array.as_ref(), &field))?))
+            .collect()
+    }
+
+    pub fn as_dyn_chunks(&self) -> anyhow::Result<Vec<Arc<dyn GeoArrowArray>>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(from_arrow_array(array.as_ref(), &field)?))
+            .collect()
+    }
+}
