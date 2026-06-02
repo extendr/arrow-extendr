@@ -271,6 +271,13 @@ impl GeoArrowVctr {
             .collect()
     }
 
+    pub fn as_rect_chunks(&self) -> anyhow::Result<Vec<RectArray>> {
+        self.iter_arrow()?
+            .into_iter()
+            .map(|(array, field)| Ok(RectArray::try_from((array.as_ref(), &field))?))
+            .collect()
+    }
+
     pub fn as_dyn_chunks(&self) -> anyhow::Result<Vec<Arc<dyn GeoArrowArray>>> {
         self.iter_arrow()?
             .into_iter()
