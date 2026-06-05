@@ -98,13 +98,27 @@ pub(crate) fn array_stream_to_robj(stream: FFI_ArrowArrayStream) -> Robj {
     robj
 }
 
+/// Borrows a `FFI_ArrowArray` without consuming it.
+///
+/// `FFI_ArrowArray::from_raw` nulls the `release` callback in the original
+/// memory, invalidating the R external pointer. This function instead copies
+/// the struct by value and replaces `release` with a no-op so that arrow-rs
+/// can wrap it in an `Arc` and call `from_ffi` without freeing the buffers
+/// that are still owned by the R object.
+///
+/// Safety: the returned `FFI_ArrowArray` must not outlive the R object that
+/// owns the underlying buffers.
 pub(crate) fn c_export_array(array_xptr: &Robj) -> anyhow::Result<FFI_ArrowArray> {
     let ptr = unsafe { R_ExternalPtrAddr(array_xptr.get()) as *mut FFI_ArrowArray };
     if ptr.is_null() {
         return Err(anyhow!("nanoarrow_array pointer is NULL"));
     }
-    Ok(unsafe { FFI_ArrowArray::from_raw(ptr) })
+    let mut copy = unsafe { std::ptr::read(ptr) };
+    copy.release = Some(noop_release_array);
+    Ok(copy)
 }
+
+unsafe extern "C" fn noop_release_array(_array: *mut FFI_ArrowArray) {}
 
 pub(crate) fn c_export_array_stream(stream_xptr: &Robj) -> anyhow::Result<FFI_ArrowArrayStream> {
     let ptr = unsafe { R_ExternalPtrAddr(stream_xptr.get()) as *mut FFI_ArrowArrayStream };
