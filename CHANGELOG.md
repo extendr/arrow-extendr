@@ -1,3 +1,14 @@
+## 58.1.0
+
+### New features
+
+- Add `GeoArrowVctr`, wrapping a `geoarrow_vctr`/`nanoarrow_vctr` from R, with `as_dyn_chunks()` and per-type accessors (`as_point_chunks()`, `as_multipolygon_chunks()`, and so on) for reading a chunked geoarrow column.
+- Add `RectArray` support to the geoarrow conversions.
+
+### Bug fixes
+
+- Pointers are no longer moved when converting from R, which could invalidate the array they referred to.
+
 ## 58.0.1
 
 ### New features

@@ -1,6 +1,6 @@
 [package]
 name = "arrow_extendr"
-version = "58.0.2"
+version = "58.1.0"
 edition = "2024"
 # matches arrow
 rust-version = "1.85.0"
