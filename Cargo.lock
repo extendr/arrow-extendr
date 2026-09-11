@@ -301,7 +301,7 @@ dependencies = [
 
 [[package]]
 name = "arrow_extendr"
-version = "58.1.1"
+version = "58.1.2"
 dependencies = [
  "anyhow",
  "arrow",

@@ -68,6 +68,22 @@ use geoarrow_array::{
 
 use crate::{FromArrowRobj, IntoArrowRobj, ToArrowRobj};
 
+/// Give an empty `ARROW:extension:metadata` the empty JSON object it means.
+///
+/// An array whose metadata is absent comes back from a round trip through R with
+/// the key present and its value empty, which is not JSON and fails to parse.
+fn with_parsable_metadata(field: Field) -> Field {
+    const KEY: &str = "ARROW:extension:metadata";
+    match field.metadata().get(KEY) {
+        Some(value) if value.is_empty() => {
+            let mut metadata = field.metadata().clone();
+            metadata.insert(KEY.to_string(), "{}".to_string());
+            field.with_metadata(metadata)
+        }
+        _ => field,
+    }
+}
+
 /// Shared extraction of (`Arc<dyn Array>`, `Field`) from a `nanoarrow_array` Robj.
 fn nanoarrow_to_arrow(robj: &Robj) -> anyhow::Result<(Arc<dyn Array>, Field)> {
     if !robj.inherits("nanoarrow_array") {
@@ -75,7 +91,7 @@ fn nanoarrow_to_arrow(robj: &Robj) -> anyhow::Result<(Arc<dyn Array>, Field)> {
     }
     let schema_robj = crate::nanoarrow::infer_schema_array(robj.clone())?;
     let ffi_schema = crate::nanoarrow::c_export_schema(&schema_robj)?;
-    let field = Field::try_from(ffi_schema)?;
+    let field = with_parsable_metadata(Field::try_from(ffi_schema)?);
     let ffi_array = crate::nanoarrow::c_export_array(robj)?;
     let array_data = unsafe { ffi::from_ffi(ffi_array, ffi_schema)? };
     Ok((make_array(array_data), field))
@@ -342,7 +358,7 @@ impl GeoArrowVctr {
     fn iter_arrow(&self) -> anyhow::Result<Vec<(Arc<dyn Array>, Field)>> {
         let schema = self.schema()?;
         let ffi_schema = crate::nanoarrow::c_export_schema(&schema)?;
-        let field = Field::try_from(ffi_schema)?;
+        let field = with_parsable_metadata(Field::try_from(ffi_schema)?);
         let chunks = self
             .chunks()?
             .iter()
