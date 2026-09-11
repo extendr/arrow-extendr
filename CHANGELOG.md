@@ -1,3 +1,9 @@
+## 58.1.1
+
+### Bug fixes
+
+- `GeoArrowVctr`'s chunk accessors now honour the vctr's selection. A `nanoarrow_vctr` is an integer vector of 1 based rows into its chunks, and slicing one in R usually narrows those integers while leaving the chunks whole. The accessors read only the chunks, so a slice was silently ignored and the caller got every row: `as_point_chunks()` on a 3 row slice of a 100 row column returned all 100. Rows are now selected in the order the vctr gives them, with `NA` read as a null element. A contiguous run is a zero copy slice and the unsliced case still returns the chunks untouched, so neither pays for the fix.
+
 ## 58.1.0
 
 ### New features
