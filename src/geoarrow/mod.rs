@@ -51,7 +51,8 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, bail};
 use arrow::{
-    array::{Array, make_array},
+    array::{Array, UInt32Array, make_array},
+    compute::take,
     datatypes::Field,
     ffi::{self, FFI_ArrowSchema},
 };
@@ -174,6 +175,12 @@ impl_to_arrow_robj_geoarrow!(
 /// with a list of `chunks` where each is its own geoarrow array
 /// the `schema` is stored in the attribute `schema`
 /// classes are: "geoarrow_vctr"  "nanoarrow_vctr"
+///
+/// The integer vector itself is the selection: each element is a 1 based row
+/// into the chunks laid end to end, and `NA` is a null element. The `offsets`
+/// attribute says where each chunk starts in that run. Slicing a vctr in R
+/// usually narrows the integers and leaves the chunks whole, so the chunk
+/// accessors apply the selection rather than returning the chunks as they are.
 pub struct GeoArrowVctr(Integers);
 
 impl TryFrom<&Robj> for GeoArrowVctr {
@@ -215,18 +222,142 @@ impl GeoArrowVctr {
             .ok_or_else(|| anyhow!("`schema` attribute missing"))
     }
 
+    /// Where each chunk starts among the rows the index vector addresses.
+    fn offsets(&self) -> anyhow::Result<Vec<usize>> {
+        let attr = self
+            .0
+            .get_attrib("offsets")
+            .ok_or_else(|| anyhow!("`offsets` attribute missing"))?;
+        let offsets = Integers::try_from(attr).map_err(|e| anyhow!("{e}"))?;
+        offsets
+            .iter()
+            .map(|o| {
+                Option::<i32>::from(o)
+                    .filter(|v| *v >= 0)
+                    .map(|v| v as usize)
+                    .ok_or_else(|| anyhow!("`offsets` must hold no NA or negative value"))
+            })
+            .collect()
+    }
+
+    /// Which chunk a 1 based row falls in, or `None` when the row is `NA`.
+    fn chunk_of(
+        offsets: &[usize],
+        row: Option<i32>,
+        total: usize,
+    ) -> anyhow::Result<Option<usize>> {
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        if row < 1 || row as usize > total {
+            bail!("row {row} is out of bounds for a vctr of {total} rows");
+        }
+        // partition_point rather than binary_search, so a zero length chunk is skipped
+        Ok(Some(offsets.partition_point(|&o| o < row as usize) - 1))
+    }
+
+    /// Pull one run of rows, all in the same chunk or all `NA`, out as a single array.
+    fn gather(
+        chunks: &[Arc<dyn Array>],
+        offsets: &[usize],
+        chunk: Option<usize>,
+        rows: &[Option<i32>],
+    ) -> anyhow::Result<Arc<dyn Array>> {
+        let Some(chunk) = chunk else {
+            // an NA row is a null element, which a null index makes for any type
+            let nulls = UInt32Array::from(vec![None; rows.len()]);
+            return Ok(take(chunks[0].as_ref(), &nulls, None)?);
+        };
+
+        let base = offsets[chunk];
+        let positions = rows
+            .iter()
+            .filter_map(|row| *row)
+            .map(|row| (row as usize - 1 - base) as u32)
+            .collect::<Vec<_>>();
+
+        // a contiguous ascending run is a slice, which copies nothing
+        if positions.windows(2).all(|w| w[1] == w[0] + 1) {
+            if let Some(first) = positions.first().copied() {
+                return Ok(chunks[chunk].slice(first as usize, positions.len()));
+            }
+        }
+
+        let idx = UInt32Array::from(positions);
+        Ok(take(chunks[chunk].as_ref(), &idx, None)?)
+    }
+
+    /// Narrow the chunks to the rows the vctr selects, in the order it selects them.
+    fn select(&self, chunks: Vec<Arc<dyn Array>>) -> anyhow::Result<Vec<Arc<dyn Array>>> {
+        let offsets = self.offsets()?;
+        if offsets.len() != chunks.len() + 1 {
+            bail!(
+                "`offsets` has {} entries for {} chunks, expected {}",
+                offsets.len(),
+                chunks.len(),
+                chunks.len() + 1
+            );
+        }
+        if offsets[0] != 0 {
+            bail!("`offsets` must start at 0, got {}", offsets[0]);
+        }
+
+        let total = offsets[chunks.len()];
+        let rows = self.0.iter().map(Option::<i32>::from).collect::<Vec<_>>();
+
+        // the whole vctr in order, where the chunks already are the answer
+        if rows.len() == total
+            && rows
+                .iter()
+                .enumerate()
+                .all(|(i, row)| *row == Some(i as i32 + 1))
+        {
+            return Ok(chunks);
+        }
+
+        if chunks.is_empty() {
+            return Ok(chunks);
+        }
+
+        let mut out = Vec::new();
+        let mut start = 0;
+        while start < rows.len() {
+            let here = Self::chunk_of(&offsets, rows[start], total)?;
+            let mut end = start + 1;
+            while end < rows.len() && Self::chunk_of(&offsets, rows[end], total)? == here {
+                end += 1;
+            }
+            out.push(Self::gather(&chunks, &offsets, here, &rows[start..end])?);
+            start = end;
+        }
+
+        // an empty selection still needs a chunk to carry the type
+        if out.is_empty() {
+            out.push(chunks[0].slice(0, 0));
+        }
+
+        Ok(out)
+    }
+
     fn iter_arrow(&self) -> anyhow::Result<Vec<(Arc<dyn Array>, Field)>> {
         let schema = self.schema()?;
         let ffi_schema = crate::nanoarrow::c_export_schema(&schema)?;
         let field = Field::try_from(ffi_schema)?;
-        self.chunks()?
+        let chunks = self
+            .chunks()?
             .iter()
             .map(|(_, chunk)| {
                 let ffi_array = crate::nanoarrow::c_export_array(&chunk)?;
                 let array_data = unsafe { ffi::from_ffi(ffi_array, ffi_schema)? };
-                Ok((make_array(array_data), field.clone()))
+                Ok(make_array(array_data))
             })
-            .collect()
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        Ok(self
+            .select(chunks)?
+            .into_iter()
+            .map(|array| (array, field.clone()))
+            .collect())
     }
 
     pub fn as_point_chunks(&self) -> anyhow::Result<Vec<PointArray>> {

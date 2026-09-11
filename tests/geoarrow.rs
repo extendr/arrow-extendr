@@ -204,3 +204,111 @@ fn test_geoarrow_geometry_collection_roundtrip() -> anyhow::Result<()> {
     .map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(())
 }
+
+/// The WKT of every row the chunks hold, laid end to end, as R sees it.
+fn chunks_wkt(chunks: Vec<PointArray>) -> extendr_api::Result<extendr_api::Robj> {
+    let parts = chunks
+        .into_iter()
+        .map(|chunk| chunk.into_arrow_robj())
+        .collect::<extendr_api::Result<Vec<_>>>()?;
+    let list = extendr_api::prelude::List::from_values(parts);
+    R!("unlist(lapply({{list}}, function(a) geoarrow::geoarrow_handle(a, wk::wkt_writer())))")
+}
+
+fn point_chunks_of(r_expr: &str) -> extendr_api::Result<Vec<PointArray>> {
+    let vctr = extendr_api::eval_string(r_expr)?;
+    arrow_extendr::geoarrow::GeoArrowVctr::try_from(&vctr)
+        .and_then(|v| v.as_point_chunks())
+        .map_err(|e| extendr_api::Error::Other(e.to_string()))
+}
+
+fn assert_wkt(r_expr: &str, expected: &str) -> anyhow::Result<()> {
+    with_r(|| {
+        let chunks = point_chunks_of(r_expr)?;
+        let got = chunks_wkt(chunks)?;
+        let report = format!("{got:?}");
+        let expected_robj = extendr_api::eval_string(expected)?;
+        let same = R!("identical({{got}}, {{expected_robj}})")?;
+        assert!(
+            same.as_logical().map(|v| v.is_true()).unwrap_or(false),
+            "{r_expr} gave {report}, expected {expected}"
+        );
+        Ok::<(), extendr_api::Error>(())
+    })
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(())
+}
+
+const PTS: &str = "geoarrow::as_geoarrow_vctr(wk::xy(1:5, 6:10))";
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_reads_every_row() -> anyhow::Result<()> {
+    assert_wkt(
+        PTS,
+        "c('POINT (1 6)', 'POINT (2 7)', 'POINT (3 8)', 'POINT (4 9)', 'POINT (5 10)')",
+    )
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_respects_a_contiguous_slice() -> anyhow::Result<()> {
+    assert_wkt(
+        &format!("{PTS}[2:4]"),
+        "c('POINT (2 7)', 'POINT (3 8)', 'POINT (4 9)')",
+    )
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_respects_a_single_row() -> anyhow::Result<()> {
+    assert_wkt(&format!("{PTS}[4]"), "'POINT (4 9)'")
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_respects_a_reordering() -> anyhow::Result<()> {
+    assert_wkt(
+        &format!("{PTS}[c(5L, 1L, 3L)]"),
+        "c('POINT (5 10)', 'POINT (1 6)', 'POINT (3 8)')",
+    )
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_respects_a_repeat() -> anyhow::Result<()> {
+    assert_wkt(
+        &format!("{PTS}[c(2L, 2L)]"),
+        "c('POINT (2 7)', 'POINT (2 7)')",
+    )
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_reads_na_as_a_null() -> anyhow::Result<()> {
+    assert_wkt(&format!("{PTS}[NA_integer_]"), "NA_character_")
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_reads_an_empty_selection() -> anyhow::Result<()> {
+    with_r(|| {
+        let chunks = point_chunks_of(&format!("{PTS}[0]"))?;
+        assert_eq!(chunks.iter().map(|c| c.len()).sum::<usize>(), 0);
+        // an empty selection still carries the type, so callers can read it
+        assert_eq!(chunks.len(), 1);
+        Ok::<(), extendr_api::Error>(())
+    })
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_slices_across_chunks() -> anyhow::Result<()> {
+    let two = format!("vctrs::vec_c({PTS}, {PTS})");
+    assert_wkt(
+        &format!("{two}[4:7]"),
+        "c('POINT (4 9)', 'POINT (5 10)', 'POINT (1 6)', 'POINT (2 7)')",
+    )
+}
