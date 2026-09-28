@@ -92,5 +92,5 @@ compile_error!("features `polars-51` and `polars-53`/`polars` are mutually exclu
 #[cfg(any(feature = "polars-53", feature = "polars-51"))]
 pub mod polars;
 
-#[cfg(feature = "geoarrow-08")]
+#[cfg(feature = "geoarrow-09")]
 pub mod geoarrow;

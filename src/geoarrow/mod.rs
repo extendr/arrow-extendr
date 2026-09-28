@@ -1,7 +1,7 @@
 //! Convert [geoarrow-array](https://docs.rs/geoarrow-array) structs to and from an `Robj`
 //! via the Arrow C Data Interface.
 //!
-//! Gated behind the `geoarrow-08` feature flag.
+//! Gated behind the `geoarrow-09` feature flag.
 //!
 //! All types are exchanged as `nanoarrow_array` R external pointer objects, compatible
 //! with the [{geoarrow}](https://geoarrow.github.io/geoarrow-r/) R package.
