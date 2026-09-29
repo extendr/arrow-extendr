@@ -1,3 +1,9 @@
+## 58.1.2
+
+### New features
+
+- Add `WkbViewArray` and `WktViewArray` to the geoarrow conversions, so `geoarrow.wkb` and `geoarrow.wkt` backed by `binary_view` and `string_view` read without being rewritten to the plain types first. This is the extension typed case; a bare `binary_view` column carrying no geoarrow metadata is still storage rather than geometry and is unaffected.
+
 ## 58.1.1
 
 ### Bug fixes

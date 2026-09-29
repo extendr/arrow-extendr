@@ -1,6 +1,6 @@
 [package]
 name = "arrow_extendr"
-version = "58.1.1"
+version = "59.0.0"
 edition = "2024"
 # matches arrow
 rust-version = "1.85.0"
@@ -13,7 +13,7 @@ categories = ["development-tools::ffi"]
 include = ["Cargo.toml", "README.md", "src/*"]
 
 [package.metadata.docs.rs]
-features = ["geoarrow-08", "polars-53"]
+features = ["geoarrow", "polars-53"]
 
 [lib]
 crate-type = ["lib", "staticlib"]
@@ -21,10 +21,10 @@ name = "arrow_extendr"
 
 [dependencies]
 anyhow = "1"
-arrow = { version = "58.3.0", features = ["ffi"], optional = true }
+arrow = { version = ">=58, <60", features = ["ffi"], optional = true }
 extendr-api = ">=0.8.1"
 extendr-ffi = "0.9.0"
-geoarrow-array = { version = "0.8", optional = true }
+geoarrow-array = { version = ">=0.8, <0.10", optional = true }
 polars-core = {
   version = "0.53.0",
   features = [
@@ -75,13 +75,14 @@ polars-core-051 = {
 anyhow = "1"
 extendr-engine = "0.9.0"
 geo-types = "0.7"
-geoarrow-schema = "0.8"
+geoarrow-schema = ">=0.8, <0.10"
 serial_test = "3"
 
 [features]
 default = ["arrow"]
 arrow = ["dep:arrow"]
-geoarrow-08 = ["arrow", "dep:geoarrow-array"]
+geoarrow = ["arrow", "dep:geoarrow-array"]
+geoarrow-08 = ["geoarrow"]
 polars = ["polars-53"]
 polars-51 = ["arrow", "dep:polars-core-051"]
 polars-53 = ["arrow", "dep:polars-core"]

@@ -26,6 +26,7 @@ jobs:
       matrix:
         feature:
           - arrow
+          - geoarrow
           - geoarrow-08
           - polars
           - polars-51
@@ -54,7 +55,8 @@ jobs:
           extra-packages: |
             any::wk
             any::geoarrow
+            any::vctrs
       - name: Set LD_LIBRARY_PATH
         run: echo "LD_LIBRARY_PATH=$(R RHOME)/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: cargo test
-        run: cargo test --features geoarrow-08
+        run: cargo test --features geoarrow

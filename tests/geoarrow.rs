@@ -312,3 +312,16 @@ fn test_geoarrow_vctr_slices_across_chunks() -> anyhow::Result<()> {
         "c('POINT (4 9)', 'POINT (5 10)', 'POINT (1 6)', 'POINT (2 7)')",
     )
 }
+
+#[test]
+#[serial]
+fn test_geoarrow_vctr_reads_empty_extension_metadata() -> anyhow::Result<()> {
+    // an array with no metadata gains the key with an empty value on a round trip
+    assert_wkt(
+        "geoarrow::as_geoarrow_vctr(nanoarrow::nanoarrow_extension_array(
+           nanoarrow::as_nanoarrow_array(data.frame(x = c(1, 2, 3), y = c(4, 5, 6))),
+           'geoarrow.point'
+         ))[c(3L, 1L)]",
+        "c('POINT (3 6)', 'POINT (1 4)')",
+    )
+}

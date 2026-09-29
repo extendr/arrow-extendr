@@ -9,7 +9,7 @@ Arrow memory is exchanged via the [Arrow C Data Interface](https://arrow.apache.
 | Feature | Description |
 | ------- | ----------- |
 | `arrow` | Core arrow-rs interop (default) |
-| `geoarrow-08` | GeoArrow array support via geoarrow-array 0.8 |
+| `geoarrow-09` | GeoArrow array support via geoarrow-array 0.9 |
 | `polars` | Polars interop, alias for `polars-53` |
 | `polars-53` | Polars interop for polars-core 0.53 |
 | `polars-51` | Polars interop for polars-core 0.51 |
@@ -81,11 +81,11 @@ process_stream(query)
 
 ## GeoArrow interop
 
-arrow-extendr supports [GeoArrow](https://geoarrow.org/) via the `geoarrow-08` feature flag, backed by the [geoarrow-array](https://docs.rs/geoarrow-array) crate.
+arrow-extendr supports [GeoArrow](https://geoarrow.org/) via the `geoarrow-09` feature flag, backed by the [geoarrow-array](https://docs.rs/geoarrow-array) crate.
 
 ```toml
-arrow_extendr = { version = "58.0.1", features = ["geoarrow-08"] }
-geoarrow-array = "0.8"
+arrow_extendr = { version = "59.0.0", features = ["geoarrow-09"] }
+geoarrow-array = "0.9"
 ```
 
 This enables the following conversions between Rust and R's `nanoarrow_array` objects:
@@ -144,7 +144,7 @@ These features are mutually exclusive — enabling more than one will produce a 
 ### polars-core 0.53
 
 ```toml
-arrow_extendr = { version = "58.0.1", features = ["polars-53"], default-features = false }
+arrow_extendr = { version = "59.0.0", features = ["polars-53"], default-features = false }
 polars-core = "0.53.0"
 anyhow = "1"
 ```
@@ -152,7 +152,7 @@ anyhow = "1"
 ### polars-core 0.51
 
 ```toml
-arrow_extendr = { version = "58.0.1", features = ["polars-51"], default-features = false }
+arrow_extendr = { version = "59.0.0", features = ["polars-51"], default-features = false }
 polars-core = "0.51.0"
 anyhow = "1"
 ```
@@ -208,6 +208,7 @@ At present, versions of arrow-rs are not compatible with each other. This means 
 
 **Versions**:
 
+- 59.0.0
 - 58.0.0
 - 55.1.0
 - 54.0.0
